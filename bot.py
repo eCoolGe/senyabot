@@ -48,7 +48,7 @@ async def process_help_command(message: types.Message):
     """
     msg = text('<b>Я могу ответить на следующие команды:</b>',
                'Сообщение формата "Родитель Приход Зарплата Преподаватель Комментарий"',
-               '/salary [DD.MM.YY]', '/income [DD.MM.YY]', sep='\n')
+               '/salary [DD.MM.YYYY]', '/income [DD.MM.YYYY]', sep='\n')
     await message.reply(msg)
 
 
