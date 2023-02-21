@@ -8,7 +8,7 @@ from aiogram.utils.markdown import text
 from env_reader import config
 from aiogram.dispatcher.filters import CommandObject
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from config import TRUSTED_ID, LOG_LISTNAME, INCOME_LISTNAME, SALARY_LISTNAME
+from config import TRUSTED_ID, DICTIONARY, LOG_LISTNAME, INCOME_LISTNAME, SALARY_LISTNAME
 import spreadsheets
 
 logging.basicConfig(format=u'%(filename)s [ LINE:%(lineno)+3s ]#%(levelname)+8s [%(asctime)s]  %(message)s',
@@ -107,7 +107,7 @@ async def process_extract_data(message: types.Message):
     user_text = re.sub(r"\s((\s)(\s+)?)?", " ", user_text)
     user_split_text = user_text.split(sep=" ", maxsplit=4)
 
-    if len(user_split_text) < 4:
+    if len(user_split_text) < 4 or user_split_text[0] in DICTIONARY:
         return
 
     spreadsheets.upload_log_message(LOG_LISTNAME, user_split_text)
