@@ -5,6 +5,8 @@ import re
 from aiogram import Bot, Dispatcher, types, html
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.utils.markdown import text
+from googleapiclient.errors import HttpError
+
 from env_reader import config
 from aiogram.dispatcher.filters import CommandObject
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -151,6 +153,18 @@ async def process_send_value(callback: types.CallbackQuery):
     except ValueError:
         await callback.answer(
             text="Произошла ошибка или данные были введены некорректно, попробуйте еще раз",
+            show_alert=True
+        )
+    except KeyError:
+        await callback.answer(
+            text="Произошла ошибка - возможно, ваша таблица полностью пустая - попробуйте внести одну фамилию и одну "
+                 "дату",
+            show_alert=True
+        )
+    except HttpError:
+        await callback.answer(
+            text="Произошла ошибка - возможно, в вашей таблице закончились столбцы или колонки - создайте их в ручном "
+                 "режиме",
             show_alert=True
         )
 
