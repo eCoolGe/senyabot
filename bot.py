@@ -3,6 +3,7 @@ import logging
 import re
 
 from aiogram import Bot, Dispatcher, types, html
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.utils.markdown import text
 from env_reader import config
 from aiogram.dispatcher.filters import CommandObject
@@ -117,7 +118,10 @@ async def process_extract_data(message: types.Message):
         callback_data="send_value")
     )
 
-    await bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+    try:
+        await bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+    except TelegramBadRequest:
+        await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
     await message.answer(
         f"{user_text}",
