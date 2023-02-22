@@ -6,7 +6,6 @@ from env_reader import config
 from config import SURNAME_RANGES, DATE_RANGES, LOG_RANGES, PAY_RANGES
 
 SPREADSHEET_ID = config.spreadsheet_id
-DATE_NOW = date.today().strftime("%d.%m.%Y")
 ABC = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v",
        "w", "x", "y", "z"]
 
@@ -16,6 +15,10 @@ credentials = ServiceAccountCredentials.from_json_keyfile_name(config.credential
                                                                 'https://www.googleapis.com/auth/drive'])
 httpAuth = credentials.authorize(httplib2.Http())  # Авторизуемся в системе
 service = apiclient.discovery.build('sheets', 'v4', http=httpAuth)  # Выбираем работу с таблицами и 4 версию API
+
+
+def get_date_today():
+    return date.today().strftime("%d.%m.%Y")
 
 
 def get_data(spreadsheet_id, ranges, major_dimension='ROWS'):
@@ -67,7 +70,7 @@ def upload_list_pay(horizontal_name, external_pay, list_name):
     vertical = [f"{list_name}!{DATE_RANGES}"]
 
     first_index = ABC[get_index(horizontal_name, SPREADSHEET_ID, list_name, horizontal, 'COLUMNS')]
-    last_index = get_index(DATE_NOW, SPREADSHEET_ID, list_name, vertical) + 1
+    last_index = get_index(get_date_today(), SPREADSHEET_ID, list_name, vertical) + 1
 
     try:
         internal_pay = get_data(SPREADSHEET_ID, f"{list_name}!{first_index}{last_index}")
@@ -93,9 +96,9 @@ def upload_log_message(list_name, log_text):
     last_index = len(sheet_values) + 1
 
     if len(log_text) == 4:
-        values = [DATE_NOW, log_text[0], log_text[1], log_text[2], log_text[3]]
+        values = [get_date_today(), log_text[0], log_text[1], log_text[2], log_text[3]]
     else:
-        values = [DATE_NOW, log_text[0], log_text[1], log_text[2], log_text[3], log_text[4]]
+        values = [get_date_today(), log_text[0], log_text[1], log_text[2], log_text[3], log_text[4]]
 
     service.spreadsheets().values().batchUpdate(spreadsheetId=SPREADSHEET_ID, body={
         "valueInputOption": "USER_ENTERED",
@@ -109,7 +112,7 @@ def upload_log_message(list_name, log_text):
     }).execute()
 
 
-def pay_calculate(list_name, date_calculate=DATE_NOW):
+def pay_calculate(list_name, date_calculate=get_date_today()):
     """
     Возвращает массив строковых элементов типа "Имя - Сумма" или же сообщение о том, что таких данных нет
     """
@@ -131,3 +134,5 @@ def pay_calculate(list_name, date_calculate=DATE_NOW):
         return [result, result_sum]
     except ValueError:
         return ["Данные не найдены"]
+
+
