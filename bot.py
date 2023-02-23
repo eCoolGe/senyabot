@@ -5,13 +5,14 @@ import re
 from aiogram import Bot, Dispatcher, types, html
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.utils.markdown import text
+from aiogram.dispatcher.filters import CommandObject, Text
 from googleapiclient.errors import HttpError
 
 from env_reader import config
-from aiogram.dispatcher.filters import CommandObject
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 from config import TRUSTED_ID, DICTIONARY, LOG_LISTNAME, INCOME_LISTNAME, SALARY_LISTNAME
 import spreadsheets
+import keyboards
+import utils
 
 logging.basicConfig(format=u'%(filename)s [ LINE:%(lineno)+3s ]#%(levelname)+8s [%(asctime)s]  %(message)s',
                     level=logging.INFO)
@@ -32,16 +33,7 @@ async def process_start_command(message: types.Message):
     """
     Отвечает приветственным сообщением на команду /start
     """
-    buttons = [
-        [types.KeyboardButton(text="/income")],
-        [types.KeyboardButton(text="/salary")]
-    ]
-    keyboard = types.ReplyKeyboardMarkup(
-        keyboard=buttons,
-        resize_keyboard=True,
-        input_field_placeholder="*родитель* *приход* *зарплата* *преподаватель* *комментарий*"
-    )
-    await message.reply("Привет!\nЯ бот от <a href=\"t.me/ecoolge\">eCoolGe</a>!", reply_markup=keyboard)
+    await message.reply("Привет!\nЯ бот от <a href=\"t.me/ecoolge\">eCoolGe</a>!", reply_markup=keyboards.menu_markup())
 
 
 @dp.message(commands=['help'])
@@ -61,41 +53,23 @@ async def process_pay_output(message: types.Message, command: CommandObject):
     Выводит на экран приход или зарплату за текущий или указанный день, если таковая имеется,
     если нет - возвращает сообщение об этом
     """
-    if command.command == "income":
-        pay_type = INCOME_LISTNAME
-    else:
-        pay_type = SALARY_LISTNAME
+    pay_type = INCOME_LISTNAME if command.command == "income" else SALARY_LISTNAME
 
-    if command.args:
+    if command.args is not None:
         pay_array = spreadsheets.pay_calculate(pay_type, str(command.args))
-
-        if len(pay_array) > 1:
-            pay_strings = '\n'.join(map(str, pay_array[0]))
-            total_string = f"<b>Итого:</b> {pay_array[1]}"
-        else:
-            pay_strings = pay_array[0]
-            total_string = ""
-
-        await message.answer(
-            f"{pay_type} за <b>{html.quote(command.args)}</b> \n\n"
-            f"{pay_strings}\n\n"
-            f"{total_string}"
-        )
+        selected_day = f"{html.quote(command.args)}"
     else:
         pay_array = spreadsheets.pay_calculate(pay_type)
+        selected_day = "сегодня"
 
-        if len(pay_array) > 1:
-            pay_strings = '\n'.join(map(str, pay_array[0]))
-            total_string = f"<b>Итого:</b> {pay_array[1]}"
-        else:
-            pay_strings = pay_array[0]
-            total_string = ""
+    pay_strings = '\n'.join(map(str, pay_array[0])) if len(pay_array) > 1 else pay_array[0]
+    total_string = f"<b>Итого:</b> {pay_array[1]}" if len(pay_array) > 1 else ""
 
-        await message.answer(
-            f"{pay_type} за <b>сегодня</b>\n\n"
-            f"{pay_strings}\n\n"
-            f"{total_string}"
-        )
+    await message.answer(
+        f"{pay_type} за <b>{selected_day}</b> \n\n"
+        f"{pay_strings}\n\n"
+        f"{total_string}"
+    )
 
 
 @dp.message(content_types="text")
@@ -114,12 +88,6 @@ async def process_extract_data(message: types.Message):
 
     spreadsheets.upload_log_message(LOG_LISTNAME, user_split_text)
 
-    builder = InlineKeyboardBuilder()
-    builder.add(types.InlineKeyboardButton(
-        text="Подтвердить отправку в таблицу",
-        callback_data="send_value")
-    )
-
     try:
         await bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
     except TelegramBadRequest:
@@ -127,46 +95,47 @@ async def process_extract_data(message: types.Message):
 
     await message.answer(
         f"{user_text}",
-        reply_markup=builder.as_markup()
+        reply_markup=keyboards.send_markup()
     )
 
 
-@dp.callback_query(text="send_value")
+@dp.callback_query(Text(text_startswith="send_"))
 async def process_send_value(callback: types.CallbackQuery):
     """
     Заносит данные в таблицу прихода и зарплаты
     """
-    user_text = callback.message.text
-    user_text = user_text.split(sep=" ", maxsplit=4)
+    action = callback.data.split("_", maxsplit=1)[1]
 
-    try:
-        spreadsheets.upload_list_pay(user_text[3], int(user_text[1]), INCOME_LISTNAME)
-        spreadsheets.upload_list_pay(user_text[3], int(user_text[2]), SALARY_LISTNAME)
-
+    if action == "yesterday" or action == "today":
+        await callback.message.edit_text(callback.message.text, reply_markup=keyboards.yesno_markup(callback.data))
+        await callback.answer()
+    elif action == "close":
         await callback.message.edit_text(callback.message.text)
+    elif action == "back":
+        await callback.message.edit_text(callback.message.text, reply_markup=keyboards.send_markup())
+        await callback.answer()
+    elif action == "yesterday_yes" or action == "today_yes":
+        user_text = callback.message.text
+        user_text = user_text.split(sep=" ", maxsplit=4)
 
-        await callback.answer(
-            text="Данные успешно отправлены в таблицу",
-            show_alert=True
-        )
-        # или просто await call.answer()
-    except ValueError:
-        await callback.answer(
-            text="Произошла ошибка или данные были введены некорректно, попробуйте еще раз",
-            show_alert=True
-        )
-    except KeyError:
-        await callback.answer(
-            text="Произошла ошибка - возможно, ваша таблица полностью пустая - попробуйте внести одну фамилию и одну "
-                 "дату",
-            show_alert=True
-        )
-    except HttpError:
-        await callback.answer(
-            text="Произошла ошибка - возможно, в вашей таблице закончились столбцы или колонки - создайте их в ручном "
-                 "режиме",
-            show_alert=True
-        )
+        selected_day = utils.today()
+        if action == "yesterday_yes":
+            selected_day = utils.yesterday()
+        status = f"☁ • {selected_day}"
+
+        try:
+            spreadsheets.upload_list_pay(user_text[3], selected_day, int(user_text[1]), INCOME_LISTNAME)
+            spreadsheets.upload_list_pay(user_text[3], selected_day, int(user_text[2]), SALARY_LISTNAME)
+            await callback.message.edit_text(f"{callback.message.text}\n\n<b>{status}</b>")
+            await callback.answer()
+        except ValueError or KeyError or HttpError as error:
+            header = "Ошибка!\n\n"
+            msg = "Данные введены некорректно"
+            if error == KeyError:
+                msg = "Возможно, таблица пустая - попробуйте внести по одной фамилии и дате"
+            elif error == HttpError:
+                msg = "Возможно, столбцы и колонки закончились - добавьте их вручную"
+            await callback.answer(text=f"{header}{msg}\n\n{error}", show_alert=True)
 
 
 async def main():
