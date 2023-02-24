@@ -47,6 +47,14 @@ async def process_help_command(message: types.Message):
     await message.reply(msg)
 
 
+@dp.message(commands=['now'])
+async def process_help_command(message: types.Message):
+    """
+    Отвечает полной датой и временем на команду /now
+    """
+    await message.reply(f'<b>Дата и время бота:</b>\n <code>{utils.full_today()}</code>')
+
+
 @dp.message(commands=["income", "salary"])
 async def process_pay_output(message: types.Message, command: CommandObject):
     """
@@ -59,8 +67,9 @@ async def process_pay_output(message: types.Message, command: CommandObject):
         pay_array = spreadsheets.pay_calculate(pay_type, str(command.args))
         selected_day = f"{html.quote(command.args)}"
     else:
-        pay_array = spreadsheets.pay_calculate(pay_type)
-        selected_day = "сегодня"
+        today = utils.today()
+        pay_array = spreadsheets.pay_calculate(pay_type, today)
+        selected_day = f"{today}"
 
     pay_strings = '\n'.join(map(str, pay_array[0])) if len(pay_array) > 1 else pay_array[0]
     total_string = f"<b>Итого:</b> {pay_array[1]}" if len(pay_array) > 1 else ""

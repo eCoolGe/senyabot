@@ -7,7 +7,9 @@ import utils
 
 SPREADSHEET_ID = config.spreadsheet_id
 ABC = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v",
-       "w", "x", "y", "z"]
+       "w", "x", "y", "z", "aa", "ab", "ac", "ad", "ae", "af", "ag", "ah", "ai", "aj", "ak", "al", "am", "an", "ao",
+       "ap", "aq", "ar", "as", "at", "au", "av", "aw", "ax", "ay", "az", "ba", "bb", "bc", "bd", "be", "bf", "bg",
+       "bh", "bi", "bj", "bk", "bl", "bm", "bn", "bo", "bp", "bq", "br", "bs", "bt", "bu", "bv", "bw", "bx", "by", "bz"]
 
 # Читаем ключи из файла с закрытым ключом
 credentials = ServiceAccountCredentials.from_json_keyfile_name(config.credentials_file,
@@ -74,12 +76,15 @@ def upload_list_pay(horizontal_name, vertical_name, external_pay, list_name):
     except KeyError:
         internal_pay = 0
 
+    pay = int(external_pay) + int(internal_pay)
+    print(pay)
+
     service.spreadsheets().values().batchUpdate(spreadsheetId=SPREADSHEET_ID, body={
         "valueInputOption": "USER_ENTERED",
         "data": [{
             "range": f"{list_name}!{first_index}{last_index}",
             "majorDimension": "ROWS",
-            "values": [[f"{external_pay + int(internal_pay)}"]]
+            "values": [[f"{pay}"]]
         }]
     }).execute()
 
@@ -108,7 +113,7 @@ def upload_log_message(list_name, log_text):
     }).execute()
 
 
-def pay_calculate(list_name, date_calculate=utils.today()):
+def pay_calculate(list_name, date_calculate):
     """
     Возвращает массив строковых элементов типа "Имя - Сумма" или же сообщение о том, что таких данных нет
     """
