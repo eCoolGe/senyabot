@@ -11,4 +11,4 @@ def today():
 
 
 def yesterday():
-    return (datetime.now() - timedelta(days=TIME_REMARK) + timedelta(hours=3)).strftime("%d.%m.%Y")
+    return (datetime.now() - timedelta(days=1) + timedelta(hours=TIME_REMARK)).strftime("%d.%m.%Y")
