@@ -115,11 +115,12 @@ async def process_send_value(callback: types.CallbackQuery):
     """
     action = callback.data.split("_", maxsplit=1)[1]
 
-    if action == "yesterday" or action == "today":
+    if action == "yesterday" or action == "today" or action == "close":
         await callback.message.edit_text(callback.message.text, reply_markup=keyboards.yesno_markup(callback.data))
         await callback.answer()
-    elif action == "close":
+    elif action == "close_yes":
         await callback.message.edit_text(callback.message.text)
+        await callback.answer()
     elif action == "back":
         await callback.message.edit_text(callback.message.text, reply_markup=keyboards.send_markup())
         await callback.answer()
